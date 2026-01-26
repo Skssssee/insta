@@ -1,7 +1,6 @@
 {
-  "name": "koyeb-yt-insta-downloader",
+  "name": "yt-only-downloader",
   "version": "1.0.0",
-  "description": "YouTube and Instagram Downloader API for Koyeb",
   "main": "api/ytdownload.js",
   "scripts": {
     "start": "node api/ytdownload.js"
@@ -9,8 +8,5 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5"
-  },
-  "engines": {
-    "node": ">=18.0.0"
   }
 }
