@@ -18,32 +18,27 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": False, "message": "URL missing!"}).encode())
             return
 
-        # Vercel Fix: Copy cookies to /tmp folder
+        # Vercel Temporary Cookies Fix
         original_cookie_path = os.path.join(os.getcwd(), 'cookies.txt')
         temp_cookie_path = '/tmp/cookies.txt'
-
         if os.path.exists(original_cookie_path):
-            try:
-                shutil.copy2(original_cookie_path, temp_cookie_path)
-                os.chmod(temp_cookie_path, 0o644)
-            except Exception as e:
-                print(f"Cookie copy error: {e}")
+            shutil.copy2(original_cookie_path, temp_cookie_path)
 
-        # Final Bypass Settings
+        # UPDATED: Flexible Format Selection
         ydl_opts = {
-            'format': 'best',
+            'format': 'bestvideo+bestaudio/best', # Force merge ya jo best ho wo uthao
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
+                    'player_client': ['android', 'ios'], # Mobile clients are harder to block
+                    'player_skip': ['webpage', 'configs'],
                 }
             }
         }
 
-        # Use the temp cookie path
         if os.path.exists(temp_cookie_path):
             ydl_opts['cookiefile'] = temp_cookie_path
 
@@ -51,14 +46,19 @@ class handler(BaseHTTPRequestHandler):
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(video_url, download=False)
                 
+                # Link nikalne ki optimized logic
+                formats = info.get('formats', [])
+                # Filter for links that are actually accessible
+                download_url = info.get('url') or (formats[-1].get('url') if formats else None)
+
                 res_data = {
                     "success": True,
                     "data": {
                         "title": info.get('title'),
                         "thumbnail": info.get('thumbnail'),
-                        "url": info.get('url'),
-                        "duration": info.get('duration_string'),
-                        "uploader": info.get('uploader')
+                        "url": download_url,
+                        "uploader": info.get('uploader'),
+                        "duration": info.get('duration_string')
                     }
                 }
 
