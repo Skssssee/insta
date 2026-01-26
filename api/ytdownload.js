@@ -6,35 +6,30 @@ const app = express();
 
 app.use(cors());
 
-// Aapka specific endpoint
 app.get('/api/ytdownload', (req, res) => {
     const videoUrl = req.query.url;
-    
-    if (!videoUrl) {
-        return res.status(400).json({ success: false, message: "YouTube URL toh daal bhai!" });
-    }
+    if (!videoUrl) return res.status(400).json({ success: false, message: "URL missing!" });
 
     const cookiePath = path.join(__dirname, '../cookies.txt');
 
-    // BYPASS COMMAND: YouTube ko lagega ye iPhone se request hai
-    const command = `python3 -m yt_dlp --cookies "${cookiePath}" --dump-json --no-check-certificate --user-agent "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" --extractor-args "youtube:player_client=ios,mweb" -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/b" --no-playlist "${videoUrl}"`;
+    // NEW BYPASS STRATEGY:
+    // 1. Android client use kiya hai jo cookies handle kar sakta hai.
+    // 2. n-challenge solve karne ke liye player_client settings badli hain.
+    const command = `python3 -m yt_dlp --cookies "${cookiePath}" --dump-json --no-check-certificate --user-agent "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36" --extractor-args "youtube:player_client=android,web;player_skip=webpage,configs" -f "best" --no-playlist "${videoUrl}"`;
 
     exec(command, (error, stdout, stderr) => {
         if (error) {
             console.error(`❌ Scrape Error: ${stderr}`);
-            return res.status(500).json({ success: false, error: "YouTube blocked this request. Check cookies." });
+            return res.status(500).json({ success: false, error: "YouTube still blocking. PO-Token or Oauth required." });
         }
-
         try {
             const data = JSON.parse(stdout);
             res.json({
                 success: true,
                 data: {
                     title: data.title,
-                    url: data.url, // Direct Scrapped Download Link
-                    thumbnail: data.thumbnail,
-                    duration: data.duration_string,
-                    uploader: data.uploader
+                    url: data.url,
+                    thumbnail: data.thumbnail
                 }
             });
         } catch (e) {
