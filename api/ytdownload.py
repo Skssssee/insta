@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import yt_dlp
 import os
+import shutil
 from urllib.parse import urlparse, parse_qs
 
 class handler(BaseHTTPRequestHandler):
@@ -17,28 +18,34 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"success": False, "message": "URL missing!"}).encode())
             return
 
-        cookie_path = os.path.join(os.getcwd(), 'cookies.txt')
+        # Vercel Fix: Copy cookies to /tmp folder
+        original_cookie_path = os.path.join(os.getcwd(), 'cookies.txt')
+        temp_cookie_path = '/tmp/cookies.txt'
 
-        # FINAL BYPASS SETTINGS
+        if os.path.exists(original_cookie_path):
+            try:
+                shutil.copy2(original_cookie_path, temp_cookie_path)
+                os.chmod(temp_cookie_path, 0o644)
+            except Exception as e:
+                print(f"Cookie copy error: {e}")
+
+        # Final Bypass Settings
         ydl_opts = {
             'format': 'best',
             'quiet': True,
             'no_warnings': True,
             'nocheckcertificate': True,
-            # Fake User Agent
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            # Force YouTube to use Android Clients (Hard to block)
             'extractor_args': {
                 'youtube': {
                     'player_client': ['android', 'web'],
-                    'player_skip': ['webpage', 'configs'],
                 }
             }
         }
 
-        # Load cookies if available
-        if os.path.exists(cookie_path):
-            ydl_opts['cookiefile'] = cookie_path
+        # Use the temp cookie path
+        if os.path.exists(temp_cookie_path):
+            ydl_opts['cookiefile'] = temp_cookie_path
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -65,5 +72,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            # Error message for debugging
             self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
